@@ -1,0 +1,4 @@
+istio-federation-server
+roots.pem
+leaf.pem
+leaf.key
