@@ -13,37 +13,37 @@ import (
 )
 
 var (
-	configFlag = flag.String("config", "istio-federation-server.conf", "configuration file")
+	rootCAPath   = flag.String("rootCAPath", "./roots.pem", "File containing trust domain root certificates")
+	leafCertPath = flag.String("leafCertPath", "./leaf.pem", "The leaf certificate to use for serving TLS")
+	leafKeyPath  = flag.String("leafKeyPath", "./leaf.key", "The private key of the leaf certificate to serve TLS with")
+
+	logLevel    = flag.String("logLevel", "DEBUG", "The level to log at")
+	logRequests = flag.Bool("logRequests", false, "If set to true, all requests will be logged")
 )
 
 func main() {
 	flag.Parse()
-	if err := run(context.Background(), *configFlag); err != nil {
+	if err := run(context.Background()); err != nil {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, configPath string) error {
-	config, err := LoadConfig(configPath)
-	if err != nil {
-		return err
-	}
-
-	log, err := log.NewLogger(config.LogLevel, "", "")
+func run(ctx context.Context) error {
+	log, err := log.NewLogger(*logLevel, "", "")
 	if err != nil {
 		return errs.Wrap(err)
 	}
 	defer log.Close()
 
-	var handler http.Handler = NewHandler(config.RootCAPath, log)
-	if config.LogRequests {
+	var handler http.Handler = NewHandler(*rootCAPath, log)
+	if *logRequests {
 		log.Info("Logging all requests")
 		handler = logHandler(log, handler)
 	}
 
 	log.Info("Serving HTTPS")
-	return http.ListenAndServeTLS("0.0.0.0:443", config.CertPath, config.KeyPath, handler)
+	return http.ListenAndServeTLS("0.0.0.0:443", *leafCertPath, *leafKeyPath, handler)
 }
 
 func logHandler(log logrus.FieldLogger, handler http.Handler) http.Handler {
