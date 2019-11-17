@@ -3,7 +3,7 @@
 ifs: *.go
 	go build -o docker ./...
 
-docker:
+docker: docker/istio-federation-server docker/
 	docker build -t istio/ifs docker
 
 clean:

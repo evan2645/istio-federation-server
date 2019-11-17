@@ -1,0 +1,147 @@
+---
+# Source: istio/charts/security/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: istio-ifs-service-account
+  namespace: istio-system
+  labels:
+    app: security
+    chart: security
+    release: istio
+
+---
+# Source: istio/charts/security/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: istio-ifs-istio-system
+  labels:
+    app: security
+    chart: security
+    release: istio
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "get", "update"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: istio-ifs-istio-system
+  labels:
+    app: security
+    chart: security
+    heritage: Tiller
+    release: istio
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: istio-ifs-istio-system
+subjects:
+  - kind: ServiceAccount
+    name: istio-ifs-service-account
+    namespace: istio-system
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-ifs
+  namespace: istio-system
+  labels:
+    run: istio-ifs
+spec:
+  ports:
+    - name: https-ifs
+      port: 443
+      targetPort: 443
+      protocol: TCP
+  selector:
+    run: istio-ifs
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: istio-ifs
+  namespace: istio-system
+  labels:
+    istio: ifs
+spec:
+  selector:
+    matchLabels:
+      run: istio-ifs
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: istio-ifs
+    spec:
+      serviceAccountName: istio-ifs-service-account
+      containers:
+        - name: ifs
+          image: "docker.io/yonggangl/ifs:20191116-2"
+          imagePullPolicy: IfNotPresent
+          args:
+          env:
+          resources:
+            requests:
+              cpu: 10m
+          volumeMounts:
+          - name: server-certs
+            mountPath: /etc/server
+            readOnly: true
+          - name: client-certs
+            mountPath: /etc/client
+            readOnly: true
+      volumes:
+      - name: server-certs
+        secret:
+          secretName: istio.istio-ifs-service-account
+      - name: client-certs
+        configMap:
+          name: istio-ifs-root-certs
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ifs-ingressgateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - example.ifs.com
+    port:
+      name: https
+      number: 15443
+      protocol: HTTPS
+    tls:
+      mode: PASSTHROUGH
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: ifs
+  namespace: istio-system
+spec:
+  hosts:
+  - example.ifs.com
+  gateways:
+  - ifs-ingressgateway
+  tls:
+  - match:
+    - port: 15443
+      sni_hosts:
+      - example.ifs.com
+    route:
+    - destination:
+        host: istio-ifs
+        port:
+          number: 443
+
