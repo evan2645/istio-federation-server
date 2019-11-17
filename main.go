@@ -17,8 +17,7 @@ var (
 	leafCertPath = flag.String("leafCertPath", "/etc/server/cert-chain.pem", "The leaf certificate to use for serving TLS")
 	leafKeyPath  = flag.String("leafKeyPath", "/etc/server/key.pem", "The private key of the leaf certificate to serve TLS with")
 
-	logLevel    = flag.String("logLevel", "DEBUG", "The level to log at")
-	logRequests = flag.Bool("logRequests", true, "If set to true, all requests will be logged")
+	logLevel = flag.String("logLevel", "DEBUG", "The level to log at")
 )
 
 func main() {
@@ -37,12 +36,9 @@ func run(ctx context.Context) error {
 	defer log.Close()
 
 	var handler http.Handler = NewHandler(*rootCAPath, log)
-	if *logRequests {
-		log.Info("Logging all requests")
-		handler = logHandler(log, handler)
-	}
+	handler = logHandler(log, handler)
 
-	log.Info("Serving HTTPS")
+	log.Info("Starting SPIFFE bundle endpoint server")
 	return http.ListenAndServeTLS("0.0.0.0:443", *leafCertPath, *leafKeyPath, handler)
 }
 
@@ -53,7 +49,7 @@ func logHandler(log logrus.FieldLogger, handler http.Handler) http.Handler {
 			"method":      r.Method,
 			"url":         r.URL,
 			"user-agent":  r.UserAgent,
-		}).Debug("Incoming request")
+		}).Info("Incoming request")
 		handler.ServeHTTP(w, r)
 	})
 }
