@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	rootCAPath   = flag.String("rootCAPath", "./roots.pem", "File containing trust domain root certificates")
-	leafCertPath = flag.String("leafCertPath", "./leaf.pem", "The leaf certificate to use for serving TLS")
-	leafKeyPath  = flag.String("leafKeyPath", "./leaf.key", "The private key of the leaf certificate to serve TLS with")
+	rootCAPath   = flag.String("rootCAPath", "/etc/client/roots.pem", "File containing trust domain root certificates")
+	leafCertPath = flag.String("leafCertPath", "/etc/server/cert-chain.pem", "The leaf certificate to use for serving TLS")
+	leafKeyPath  = flag.String("leafKeyPath", "/etc/server/key.pem", "The private key of the leaf certificate to serve TLS with")
 
 	logLevel    = flag.String("logLevel", "DEBUG", "The level to log at")
-	logRequests = flag.Bool("logRequests", false, "If set to true, all requests will be logged")
+	logRequests = flag.Bool("logRequests", true, "If set to true, all requests will be logged")
 )
 
 func main() {
