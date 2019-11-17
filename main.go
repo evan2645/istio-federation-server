@@ -17,6 +17,14 @@ var (
 	leafCertPath = flag.String("leafCertPath", "/etc/server/cert-chain.pem", "The leaf certificate to use for serving TLS")
 	leafKeyPath  = flag.String("leafKeyPath", "/etc/server/key.pem", "The private key of the leaf certificate to serve TLS with")
 
+	peerTrustDomainName = flag.String("peerTrustDomain", "spiffe://cluster-2", "The trust domain name to federate with")
+	peerEndpointAddress = flag.String("peerEndpointAddress", "35.193.205.112", "The address of the remote trust domain's bundle endpoint")
+	peerSpiffeID        = flag.String("peerSpiffeID", "spiffe://cluster-2/spire/server", "The SPIFFE ID of the remote trust domain's bundle endpoint")
+
+	namespace     = flag.String("namespace", "istio-system", "The namespace of the config map to keep updated with the peer's CA certificates")
+	configMapName = flag.String("configMapName", "cluster-2-ca-certs", "The name of the config map to keep updated with the peer's CA certificates")
+	configMapKey  = flag.String("configMapKey", "cluster-2-ca-certs", "The key to store the peer's CA certificates under in the configured config map")
+
 	logLevel = flag.String("logLevel", "DEBUG", "The level to log at")
 )
 
@@ -37,6 +45,23 @@ func run(ctx context.Context) error {
 
 	var handler http.Handler = NewHandler(*rootCAPath, log)
 	handler = logHandler(log, handler)
+
+	clientConfig := &BundleEndpointClientConfig{
+		TrustDomain:      *peerTrustDomainName,
+		EndpointAddress:  *peerEndpointAddress,
+		EndpointSpiffeID: *peerSpiffeID,
+
+		Namespace:     *namespace,
+		ConfigMapName: *configMapName,
+		ConfigMapKey:  *configMapKey,
+
+		Log: log,
+	}
+	log.Info("Starting SPIFFE bundle endpoint client")
+	err = StartBundleEndpointClient(ctx, clientConfig)
+	if err != nil {
+		return err
+	}
 
 	log.Info("Starting SPIFFE bundle endpoint server")
 	return http.ListenAndServeTLS("0.0.0.0:443", *leafCertPath, *leafKeyPath, handler)
