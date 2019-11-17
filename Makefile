@@ -1,10 +1,10 @@
-.PHONY: ifs docker clean
+.PHONY: docker clean
 
 ifs: *.go
-	go build -o docker ./...
+	go build -o istio-federation-server
 
 docker: docker/istio-federation-server docker/
-	docker build -t istio/ifs docker
+	docker build -t istio/ifs .
 
 clean:
-	rm docker/istio-federation-server
+	rm istio-federation-server
