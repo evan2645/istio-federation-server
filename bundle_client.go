@@ -23,7 +23,6 @@ type BundleEndpointClientConfig struct {
 
 	Namespace     string
 	ConfigMapName string
-	ConfigMapKey  string
 
 	Log logrus.FieldLogger
 }
@@ -103,7 +102,7 @@ func (b *BundleEndpointClient) getEndpointRoots(ctx context.Context) ([]*x509.Ce
 		return nil, err
 	}
 
-	roots, err := pemutil.ParseCertificates([]byte(configMap.Data[b.cfg.ConfigMapKey]))
+	roots, err := pemutil.ParseCertificates([]byte(configMap.Data["trust_bundle"]))
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +140,8 @@ func (b *BundleEndpointClient) updateRoots(ctx context.Context, roots, currentRo
 	}
 
 	pemBytes := pemutil.EncodeCertificates(currentRoots)
-	configMap.Data[b.cfg.ConfigMapKey] = string(pemBytes)
+	configMap.Data["trust_domain"] = b.cfg.TrustDomain
+	configMap.Data["trust_bundle"] = string(pemBytes)
 
 	return b.updateConfigMap(ctx, b.cfg.Namespace, configMap)
 }
