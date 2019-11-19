@@ -82,9 +82,11 @@ spec:
       serviceAccountName: istio-ifs-service-account
       containers:
         - name: ifs
-          image: "docker.io/yonggangl/ifs:20191116-2"
+          image: "docker.io/yonggangl/ifs:20191118-5"
           imagePullPolicy: IfNotPresent
           args:
+          - --peerEndpointAddress
+          - "10.128.0.15:8443"
           env:
           resources:
             requests:
@@ -93,16 +95,10 @@ spec:
           - name: server-certs
             mountPath: /etc/server
             readOnly: true
-          - name: client-certs
-            mountPath: /etc/client
-            readOnly: true
       volumes:
       - name: server-certs
         secret:
           secretName: istio.istio-ifs-service-account
-      - name: client-certs
-        configMap:
-          name: istio-ifs-root-certs
 
 ---
 apiVersion: networking.istio.io/v1alpha3
