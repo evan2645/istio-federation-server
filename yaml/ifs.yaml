@@ -82,9 +82,11 @@ spec:
       serviceAccountName: istio-ifs-service-account
       containers:
         - name: ifs
-          image: "docker.io/yonggangl/ifs:20191118-3"
+          image: "docker.io/yonggangl/ifs:20191118-5"
           imagePullPolicy: IfNotPresent
           args:
+          - --peerEndpointAddress
+          - "10.128.0.15:8443"
           env:
           resources:
             requests:
