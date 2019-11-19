@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	rootCAPath   = flag.String("rootCAPath", "/etc/client/roots.pem", "File containing this trust domain's root certificates")
+	rootCAPath   = flag.String("rootCAPath", "/etc/server/root-cert.pem", "File containing this trust domain's root certificates")
 	leafCertPath = flag.String("leafCertPath", "/etc/server/cert-chain.pem", "The leaf certificate to use for serving TLS")
 	leafKeyPath  = flag.String("leafKeyPath", "/etc/server/key.pem", "The private key of the leaf certificate to serve TLS with")
 
-	peerTrustDomainName = flag.String("peerTrustDomain", "spiffe://cluster-2", "The trust domain name to federate with")
+	peerTrustDomainName = flag.String("peerTrustDomain", "cluster-2", "The trust domain name to federate with")
 	peerEndpointAddress = flag.String("peerEndpointAddress", "240.0.0.10", "The address of the remote trust domain's bundle endpoint")
 	peerSpiffeID        = flag.String("peerSpiffeID", "spiffe://cluster-2/spire/server", "The SPIFFE ID of the remote trust domain's bundle endpoint")
 

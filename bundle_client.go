@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// BundleEndpointClientConfig is the configuration for the BundleEndpointClient.
 type BundleEndpointClientConfig struct {
 	TrustDomain      string
 	EndpointAddress  string
@@ -27,11 +29,13 @@ type BundleEndpointClientConfig struct {
 	Log logrus.FieldLogger
 }
 
+// BundleEndpointClient is the client to retrieve the SPIFFE trust bundle.
 type BundleEndpointClient struct {
 	cfg        *BundleEndpointClientConfig
 	kubeClient *kubernetes.Clientset
 }
 
+// StartBundleEndpointClient starts a client to retrieve the SPIFFE trust bundle.
 func StartBundleEndpointClient(ctx context.Context, cfg *BundleEndpointClientConfig) error {
 	kubeClient, err := newKubeClient()
 	if err != nil {
@@ -49,11 +53,13 @@ func StartBundleEndpointClient(ctx context.Context, cfg *BundleEndpointClientCon
 }
 
 func (b *BundleEndpointClient) start(ctx context.Context) {
+	// Start with 10 second initial delay.
+	initialInterval := 10 * time.Second
 	pollInterval := 5 * time.Minute
-	retryInterval := 5 * time.Second
+	retryInterval := 10 * time.Second
 
 	var failing bool
-	ticker := time.NewTicker(pollInterval)
+	ticker := time.NewTicker(initialInterval)
 	for {
 		select {
 		case <-ticker.C:
@@ -81,12 +87,14 @@ func (b *BundleEndpointClient) trySync(ctx context.Context) bool {
 		return false
 	}
 
+	b.cfg.Log.Info("Successfully retrieved roots from ConfigMap")
 	currentRoots, err := b.callBundleEndpoint(ctx, roots)
 	if err != nil {
 		b.cfg.Log.Errorf("Could not retrieve current root CAs from bundle endpoint for %v: %v", b.cfg.TrustDomain, err)
 		return false
 	}
 
+	b.cfg.Log.Info("Successfully called bundle endpoint to get the current roots")
 	err = b.updateRoots(ctx, roots, currentRoots)
 	if err != nil {
 		b.cfg.Log.Errorf("Could not persist root CA update for %v: %v", b.cfg.TrustDomain, err)
@@ -102,7 +110,12 @@ func (b *BundleEndpointClient) getEndpointRoots(ctx context.Context) ([]*x509.Ce
 		return nil, err
 	}
 
-	roots, err := pemutil.ParseCertificates([]byte(configMap.Data["trust_bundle"]))
+	certDecoded, err := base64.StdEncoding.DecodeString(configMap.Data["trust_bundle"])
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode the CA TLS root cert: %v", err)
+	}
+
+	roots, err := pemutil.ParseCertificates(certDecoded)
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +153,9 @@ func (b *BundleEndpointClient) updateRoots(ctx context.Context, roots, currentRo
 	}
 
 	pemBytes := pemutil.EncodeCertificates(currentRoots)
+	base64Byes := base64.StdEncoding.EncodeToString(pemBytes)
 	configMap.Data["trust_domain"] = b.cfg.TrustDomain
-	configMap.Data["trust_bundle"] = string(pemBytes)
+	configMap.Data["trust_bundle"] = string(base64Byes)
 
 	return b.updateConfigMap(ctx, b.cfg.Namespace, configMap)
 }
